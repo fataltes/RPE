@@ -1,6 +1,6 @@
 \chapter{Pufferfish: A space and time-efficient compacted de Bruijn graph index\protect\footnote{A joint work with Hirak Sarkar.}}
 \label{sec:pufferfish}
-\section{abstract}
+\section{Abstract}
   We present a novel data structure for representing the compacted \dbg for use
   as a pattern matching index. As the popularity of the \dbg as an index has
   increased over the past few years, so have the number of proposed
@@ -95,14 +95,16 @@ about making the \ccdbg index practical for genomic and metagenomic data while
 maintaining very fast query speeds over the index. Here, we introduce both a
 \emph{dense} and \emph{sparse} variant of the \pufferfish index, where, as with the
 FM-index~\cite{Ferragina2001Experimental}, the sparsity factor can be tuned to
-trade off search speed for index size. \fatemeh{The sparse index tuned to take maximum space is in the same level as dense index regarding space and \kmer query time. In both variants of the \pufferfish we utilize the succinct data structures and their specifically adopted operations like \rank and \select to boost the \kmer search query performance.}
+trade off search speed for index size. The sparse index tuned to take maximum space,
+is at the same level as dense index regarding space and \kmer query time.
 
 \paragraph*{Pre-processing} We assume as input to \pufferfish, the \ccdbg on the reference
 or set of references to be indexed. The \pufferfish software itself accepts as input
 a graphical fragment assembly (GFA) format file that describes the \ccdbg.
 Specifically, this file encodes the contigs (i.e., non-branching paths) of the
 \ccdbg as ``segments'' and the mapping between these contigs and the original
-reference sequences as ``paths''.  \fatemeh{Each path is spelled out with an ordered set of contig IDs and the orientation they are mapped by, so that each contig has an overlap of k-1 with its following contig in the path (either in forward or reverse-complement). }The GFA is an evolving standard that is meant
+reference sequences as ``paths''. Each path is spelled out with an ordered set of contig IDs and the orientation they are mapped by, so that each contig has an overlap of k-1 with its following contig in the path (either in forward or reverse-complement).
+The GFA is an evolving standard that is meant
 to be a common format used by tools dealing with graphical representations of
 genomes or collections of genomes. We note that there are a number of software
 tools for building the \ccdbg directly (i.e., without first building the
@@ -133,14 +135,17 @@ components, each of which is described below:
   reference sequence, since redundant sequences are represented only once in
   this structure. We note that the contig array contains the sequence of every
   valid \kmer, as well as that of potentially invalid \kmers (those which span
-  contig boundaries in the packed array \fatemeh{as the contig sequences in the array follow each other without any delimiters or gaps.}). \fatemeh{Therefore, using the next data structure we will  set the boundaries of contigs in the array in a way that makes retrieving the borders, knowing position of a contig in the contig array and length of the contig fast in the query process} We denote by $L_s$ the total length (in
+  contig boundaries in the packed array as the contig sequences in the array follow each other without any delimiters or gaps.).
+  Therefore, using the next data structure we will set the boundaries of contigs in the array in a way that makes retrieving the borders, knowing position of a contig in the contig array and length of the contig fast in the query process. 
+  We denote by $L_s$ the total length (in
   nucleotides) of the contig array.
 
 \item The boundary vector (\bv) is a sparse bit-vector with a length of $L_s$
   bits. The bits of this vector are in one-to-one correspondence with the
   nucleotides of the contig array, and the boundary vector contains a one at
   each nucleotide corresponding to the end of a contig in the contig array, and
-  a zero everywhere else. \fatemeh{We can retrieve rank of each contig in \cseq using the \rank operation on \bv. $\rank(\bv[i])$ returns number of 1s in \bv before the current index, $i$, or in other words the rank of the current contig. This can be used to get reference information for the current contig from \ctab, the data structure explained in item \ref{items:dense5}.}
+  a zero everywhere else. We can retrieve rank of each contig in \cseq using the
+  \rank~operation on \bv. $\rank(\bv[i])$ returns number of 1s in \bv before the current index, $i$, or in other words the rank of the current contig. This can be used to get reference information for the current contig from \ctab, the data structure explained in item \ref{items:dense5}.
 
 \item The minimum perfect hash function ($h\left(\right)$) maps every
   \emph{valid} \kmer in the contig array (i.e., all \kmers not spanning contig
@@ -150,7 +155,7 @@ components, each of which is described below:
 
 \item The position vector (\emph{pos}) stores, for each valid \kmer $x$, the
   position where this \kmer occurs in \cseq. Specifically, for \kmer $x$,
-  \emph{pos}$\left[h\left(x\right)\right]$ contains the \fatemeh{starting} position of $x$ in \cseq 
+  \emph{pos}$\left[h\left(x\right)\right]$ contains the starting position of $x$ in \cseq 
   such that $\cseq\left[h\left(x\right),h\left(x\right) + k\right] = x$.
 
 \item The conitg table \ctab stores, for each contig appearing in \cseq, the reference
@@ -159,7 +164,7 @@ components, each of which is described below:
   indices, where all occurrences of the item (in this case, an entire \ccdbg
   contig) are listed. The order of the contigs in the contig table is the same
   as their order in \cseq, allowing the information for a contig to be accessed
-  via a simple rank operation on \bv. \fatemeh{Having the rank for each contig, we just directly go to the corresponding line and read the reference list in that line.}
+  via a simple rank operation on \bv.
 
 \label{items:dense5}
 
@@ -394,10 +399,10 @@ were performed on an Intel(R) Xeon(R) CPU (E5-2699 v4 @2.20GHz with 44 cores and
 \hline
 \multirow{2}{*}{Indexing Tools} & \multicolumn{3}{c|}{Memory (MB)} & \multicolumn{3}{c|}{Time (secs)} \\
 \cline{2-7}
-& \parbox[c]{2cm}{Human\vfill Transcriptome} & 
+& \parbox[c]{2.5cm}{Human\vfill Transcriptome} & 
 \parbox[c]{1.5cm}{Human\vfill Genome} & 
 \parbox[c]{1.5cm}{Bacterial \vfill Genome} & 
-\parbox[c]{2cm}{Human \vfill Transcriptome} & 
+\parbox[c]{2.5cm}{Human \vfill Transcriptome} & 
 \parbox[c]{1.5cm}{Human \vfill Genome} & 
 \parbox[c]{1.5cm}{Bacterial \vfill Genome} \\
 \hline
@@ -427,10 +432,10 @@ pufferfish sparse & 331 & 17,745 & 29,811 & 1:44 & 1:10:48 & 2:02:34\\
 \hline
 \multirow{2}{*}{Indexing Tools} & \multicolumn{3}{c|}{Memory (MB)} & \multicolumn{3}{c|}{Time (secs)} \\
 \cline{2-7}
-& \parbox[c]{2cm}{Human\vfill Transcriptome} & 
+& \parbox[c]{2.5cm}{Human\vfill Transcriptome} & 
 \parbox[c]{1.5cm}{Human\vfill Genome} & 
 \parbox[c]{1.5cm}{Bacterial \vfill Genome} & 
-\parbox[c]{2cm}{Human \vfill Transcriptome} & 
+\parbox[c]{2.5cm}{Human \vfill Transcriptome} & 
 \parbox[c]{1.5cm}{Human \vfill Genome} & 
 \parbox[c]{1.5cm}{Bacterial \vfill Genome} \\
 \hline
@@ -468,7 +473,7 @@ bitvectors, but because of the succinct representation of such vectors, the disk
 \begin{tabular} {| l || c c c |}
 \hline
 \parbox[c]{2cm}{Indexing \vfill Tools} & 
-\parbox[c]{2cm}{Human\vfill Transcriptome} & 
+\parbox[c]{2.5cm}{Human\vfill Transcriptome} & 
 \parbox[c]{1.5cm}{Human\vfill Genome} & 
 \parbox[c]{1.5cm}{Bacterial \vfill Genome}  \\
 \hline   
