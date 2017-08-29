@@ -197,9 +197,9 @@ Given $p_{i}$, we can retrieve the reference positions by computing $r_{p_i} =
 \rank(\bv[p_{i}])$, which provides an index into \ctab that is
 associated with the appropriate contig. This provides all of the reference
 sequences, offsets and orientations where this contig appears. We compute the
-offset of \kmer $x$ in the contig as $o_{i} = p_{i} - \select(r_{p_i})$
-\todo{shouldn't we switch the position of select and pi? or we should at least explain that select will return the last index of the previous contig??},
-which allows us to easily project this \kmer's position onto each reference
+offset of \kmer $x$ in the contig as $o_{i} = p_{i} - \select(r_{p_i})$,
+in which \select returns the start position of the contig in \ctab.
+This allows us to easily project this \kmer's position onto each reference
 sequence where it appears. We note that querying a \kmer in the \pufferfish index is
 an asymptotically constant-time operation, and that the reference loci for a
 \kmer $x$ can be retrieve in $O(\texttt{occ}(x))$ time, where $\texttt{occ}(x)$
@@ -208,7 +208,7 @@ is the number of occurrences of $x$ in the reference.
 \subsection*{The sparse \pufferfish index}
 
 The \pufferfish index, as described above, is relatively memory-efficient. Yet, what
-is typically the biggest component, the \emph{pos} vector, can still grow rather
+is typically the biggest component, the \texttt{pos} vector, can still grow rather
 large. This is because it occupies $\lg(L_s)$ bits for each of the $N$ valid
 \kmers in \cseq. However, at the cost of a slight increase in the practical
 (though not asymptotic) complexity of lookup, the size of this structure can be
@@ -227,13 +227,13 @@ We can exploit this observation in \pufferfish to allow \emph{sampling} of the \
 positions. That is, rather than storing the position of each \kmer in the contig
 array, we store the position only for some subset of \kmers, where the rate of
 sampling is defined by a user-defined parameter $s$. For those \kmers that are
-not sampled, we store, instead, three pieces of information; the extension that
+not sampled, we store, instead, four pieces of information; the extension that
 must be applied to move toward the closest \kmer at a sampled position, whether
-or not the corresponding \kmer in \cseq is canonical, and whether the extension
+or not the corresponding \kmer in \cseq is canonical, whether the extension
 to reach the nearest sampled position should be applied by moving to the left or
-the right. \fatemeh{In addition we need a bit vector with the same size as \cseq
+the right, and a bit vector with the same size as \cseq
 that is set to $1$ for any \kmer in \cseq that we've stored its position and $0$
-for those that are not sampled.}
+for those that are not sampled.
 This idea of sampling the positions for the \kmers is similar to the
 idea of sampling the suffix array positions that is employed in the
 FM-index~\cite{Ferragina2001Experimental}. This allows us to trade off query
@@ -301,14 +301,14 @@ Intuitively, algorithm \ref{alg:nextSample} appends nucleotides stored in the
 \texttt{extension} array to $x$ to generate a new \kmer, $x'$ which either has a
 sampled position, or is closer to a sampled position than is $x$. The extension
 process is repeated with $x'$, $x''$, etc. until a sampled position is reached.
-At that point, one simply traverses back to the position in \cseq implied, by the
+At that point, one simply traverses back to the position in \cseq implied by the
 sampled position and sequence of extension operations, for the original \kmer
 $x$. The rest of the search proceeds as for the dense case. The whole process of
-\kmer query in sparse index is illustrated in fig \ref{fig:sparse_query} through an example.
+\kmer query in sparse index is illustrated in Fig \ref{fig:sparse_query} through an example.
 
 \begin{figure}
   \includegraphics[width=\textwidth]{figs/query_sparse}
-\caption{\fatemeh{An illustration of searching for a particular \kmer in the \emph{sparse}
+\caption{An illustration of searching for a particular \kmer in the \emph{sparse}
   \pufferfish index with sample factor ($s$) of 9 and extension size ($e$) of 4.
   All vectors \emph{isSampled}, \emph{isCanon}, and \emph{ExtRight} have the same
   size which is equal to length of the total number of valid \kmers.
@@ -335,7 +335,7 @@ $x$. The rest of the search proceeds as for the dense case. The whole process of
   to the end of this \kmer. Generally speaking, we need to revert all the extension appendings 
   by walking over the \emph{UnipathArray} vector to the left and right with the same steps as
   extension size until we stop at the right position that we expect the \kmer at that position to be the
-  same as the one we searched.}\todo{The input kmer in the figure is not correct. It should be canonicalized}}
+  same as the one we searched.\todo{The input kmer in the figure is not correct. It should be canonicalized}}
 \label{fig:sparse_query}
 \end{figure}
 
@@ -345,53 +345,49 @@ By altering the stored extension size $e$ and the maximum sampling rate $s$, one
 can limit the maximum number of extension steps (and hence the maximum number of
 hash lookups) that must be performed in order to retrieve the potential index of
 $x$ in \cseq. A denser sampling and longer extensions require fewer possible
-extension steps, while a sparser sampling and shorter extensions maintain fewer space
+extension steps, while a sparser sampling and shorter extensions require less space
 for each non-sampled position. If $e \geq \frac{s}{2}$, one can guarantee that
 at most a single extension step needs to be performed for any \kmer query, which
 allows \kmer queries to remain, practically very fast while still considerably
 reducing the index size for large reference sequences.
 
-\fatemeh{At the end we will explain how the sparse indexing structure is preserving 
-considerable space per \kmer that is not sampled although it has additional bit vectors
-compared to the dense index.
+Even though the sparse index maintains a number of extra bit vectors not maintained
+in the dense index, it is still usually considerably smaller.
 Assume a case where the extension length $e$ is half of the sampling factor $s$.
 Since we keep the extension required to get to 
 the closest position in left or right direction, we would need to keep
-$\frac{s}{2}$ bases for a kmer with each base represented in 2 bits, it'll be at the end 
+$\frac{s}{2}$ bases for a kmer with each base represented in 2 bits, which corresponds to 
 $\frac{s}{2}\times 2 = s$ bits per \kmer for the extension vector. Therefore, if we put all the new 
-vectors of extension, canonical, and direction together it'll be $s+1+1$ bits 
+vectors of extension, canonical, direction, and isSampled together it'll be $s+1+1+1=s+3$ bits 
 per each non-sampled \kmer compared to $\lg(L_s)$ bits that we had to keep in 
-\emph{pos} vector. Therefore, as long as $[s+1+1+1 < \lg(L_s)]$ we save space by sparse indexing.
-In a typical data set such as human genome with $\lg(L_s) ~= 20$ bits, by choosing
-$s=9$ which means we'll sample each 9th \kmer, we will save $9$ bits per each non-sampled \kmer
-or in other words for $90\%$ of the \kmers that in human genome data set with about 
-1,000,000,000 \kmers we can improve memory by $\sim2$ gigabytes of space
-even considering that $1$ bit per all the \kmers
-that specifies whether a \kmer is sampled or not.}\todo{put actual numbers}
+\emph{pos} vector. Therefore, as long as $[s+3< \lg(L_s)]$ we save space by sparse indexing.
+In a typical data set such as human genome with $\lg(L_s) \sim= \lg(3B) \geq 30$ bits, by choosing
+$s=9$ which means we'll sample each 9th \kmer, we will save $\sim18$ bits per each non-sampled \kmer.
+%\todo{put actual numbers}
 
-\section{\fatemeh{Results}}\label{sec:results}
+\section{Results}\label{sec:results}
 
-We explored the memory and time requirements for building a \ccdbg index using
+We explored the memory and time requirements for building a text index using
 \pufferfish and two other tools, \bwa and \kallisto. We also benchmark the speed of
 \kmer lookup (the fundamental building block of \bwa's alignment and \kallisto's
 pesudoalignment) under these different data structures. We performed these
 benchmarks on a number of different reference sequences, selected to show how
 the different indexes scale as the underlying reference size and complexity
-increase. \bwa and \kallisto both have the complete package of building dbg and 
-indexing it. For \pufferfish however, we first need to build the \ccdbg using the available
-tools. We build the \ccdbg and dump it in GFA format using \twopaco. Then as the output does
-not exactly reaches all the requirements for a compacted dbg, we need to have another preparation 
-step to convert the GFA file through the step we call \emph{pufferize} to the format accepted by pufferfish
-(each \kmer should be appear only once through out all the unitigs and unitigs should have overlap of $k-1$ bases).
+increase. \bwa and \kallisto both have the complete package for
+indexing a data set. For \pufferfish however, we first need to build the \ccdbg using the available
+tools. We build the \ccdbg and dump it in GFA format using \twopaco. Then, as the output does
+not satisfy our definition of a compacted dbg, we need to have another preparation 
+step to convert the GFA file. We call this process\emph{pufferization}, and it converts the GFA file to the format accepted by pufferfish
+(each \kmer should be appear only once through out all the unitigs and unitigs should have an overlap of $k-1$ bases).
 Then we will build both dense and sparse index and benchmark the time and memory for all these steps of the pipeline individually.
-Final comparison between the time and memory that pufferfish requires versus the other tools' should be the aggregated time and
+Final comparison between the time and memory that pufferfish requires versus the other tools should be the aggregated time and
 maximum memory of the whole pufferfish pipeline.
 All experiments
 were performed on an Intel(R) Xeon(R) CPU (E5-2699 v4 @2.20GHz with 44 cores and
 56MB L3 cache) with 512GB RAM and a 4TB TOSHIBA MG03ACA4 ATA HDD running ubuntu
 16.10, and were carried out using a single thread except for cdBg building step using TwoPaCo.
 
-\todo{explain datasets}
+%\todo{explain datasets}
 
 \begin{table}
 \begin{center}
@@ -461,12 +457,13 @@ pufferfish sparse & 315 & 12,510 & 20,470 & 17:41 & 26:38 & 4:26\\
 
 As expected we see in table \ref{tab:construction} that \pufferfish takes longer to build the index compared to a linear indexing based
 tool such as \bwa and stands almost in the same level as \kallisto which is another graph-based indexing tool. 
-However, it the amount of memory it needs is considerably smaller than \kallisto, so that for a large sequence 
-indexing such as human genome it is $\sim6$ times better. Comparing the \kmer lookup time in table \ref{tab:query}, 
-we can see how using a graph-based indexing system can outrun \bwa regarding time and still because of the succinct
+However, the amount of memory it needs is considerably smaller than \kallisto, so that for a large reference
+such as the human genome, it consumes $\sim6$ times less memory. Comparing the \kmer lookup time in table \ref{tab:query}, 
+we can see how using a graph-based indexing system can outperform \bwa regarding time and still because of the succinct
 data structures used in the index building and the compression algorithms used in that would need almost the same memory as \bwa
-which is much less than what \kallisto needs to load all the indexing data structure. Although \pufferfish uses rank and select
-bitvectors, but because of the succinct representation of such vectors, the disk space and memory \pufferfish needs are very similar.
+which is much less than what \kallisto needs to load all the indexing data structure.
+The disk space and memory \pufferfish needs are very similar, unlike \kallisto, where the hash table consumes
+much more RAM than what serialized version requires on disk.
 
 \begin{table}
 \begin{center}
@@ -509,16 +506,16 @@ pufferfish sparse & 271M & 11G & 18G \\
 %0inputs+119758728outputs (0major+3389704442minor)pagefaults 0swaps
 %%
 
-We note that on large sequences (e.g., variants of the human genome containing patches and alternative haplotypes)
+We note that on large sequences (e.g., the human genome)
 kallisto seems to require an inordinate amount of time (i.e., days) to load the index into memory. This appears to
 occur during the final phase of index loading. However, we were able to resolve this issue and hence
 provide \kmer query times for these samples (otherwise just amortizing the index loading time over each \kmer would result
 in lookup times tens of thousands of times slower than the other tools).
 
 \section{Conclusion and Future Work}
-In this paper we proposed a new efficient data structure for indexing compacted de Bruijn graphs and also its implementation in a tool called \pufferfish. We showed how \pufferfish can achieve a balance between time and space resources. By building upon a MPHF~\cite{limasset2017fast}, we provide practically fast \kmer lookup, and by carefully organizing our data structure and making use of succinct representations where applicable, we greatly reduce the space compared to traditional hashing-based implementations. The main components of the data structures are a minimum perfect hash function (MPHF) built on \kmers, the concatenated unitig array from which the \kmers are sampled, a bit vector that marks the boundary of unitigs in the concatenated array, a vector containing the offset position for the \kmers, and a unitig table enumerating the occurrences of each unitig in the reference sequence.
+In this chapter we proposed a new efficient data structure for indexing compacted de Bruijn graphs and also its implementation in a tool called \pufferfish. We showed how \pufferfish can achieve a balance between time and space resources. By building upon a MPHF~\cite{limasset2017fast}, we provide practically fast \kmer lookup, and by carefully organizing our data structure and making use of succinct representations where applicable, we greatly reduce the space compared to traditional hashing-based implementations. The main components of the data structures are a minimum perfect hash function (MPHF) built on \kmers, the concatenated unitig array from which the \kmers are sampled, a bit vector that marks the boundary of unitigs in the concatenated array, a vector containing the offset position for the \kmers, and a unitig table enumerating the occurrences of each unitig in the reference sequence.
 
 Moreover, we presented two variants of the \pufferfish data structure; namely, a dense and a sparse variant. The first is optimized for fast queries and the second provides the user with the ability to trade off space for speed in a fine-grained manner. In the sparse index, we only keep offset positions for a subset of \kmers. To query an unsampled \kmer, the sparse representation is aided with a few auxiliary data structures of much smaller size. Since the largest component of the index is the position vector, adopting this sparse representation significantly reduces the required memory and disk space. Our analyses suggest that pufferfish (dense) achieves similar speed to existing hash-based approaches, while greatly reducing the memory and disk space required for indexing. We consider indexing and query on both small (human transcriptome) and large (~8000 bacterial genomes) reference datasets. Pufferfish strikes a desirable balance between speed and space usage, and allows for fast search on large reference sequences, using moderate memory resources. 
-\todo{paragraphs above are both copies from the pufferfish poster abstract. Saying that in case they need to be modified!}
 
-\fatemeh{Having built an index for a reference genome or transcriptome using \pufferfish, the immediate future work would be implementing the applications of such an index. These applications fall into the categories that need mapping or alignment as their initial step. Therefore, we would like to adopt an existing aligner/mapper such as RapMap~\cite{srivastava2016rapmap} or Selective Aligner~\cite{sarkar2017towards} and modify it to use \pufferfish as its indexing methodology. Later we can use the result of this aligner for massive RNA-sequence quantification or metagenomic abundance estimation tasks. We expect the efficient memory taking of \pufferfish indexing will be beneficial in working with bigger collections of metagenomic or RNA transcriptomes. Moreover, by indexing genome and transcriptome together using \pufferfish we can discover novel exon splicing. Genome comparison and structural variant detection in a group of genomes can also be one of the immediate results of the \pufferfish as construction and query time are both reasonably fast and also memory-efficient.}
+Having built an index for a reference genome or transcriptome using \pufferfish, the immediate future work would be implementing the applications of such an index. These applications fall into the categories that need mapping or alignment as their initial step. Therefore, we would like to adopt an existing aligner or mapper such as RapMap~\cite{srivastava2016rapmap} or Selective Alignement~\cite{sarkar2017towards} and modify it to use \pufferfish as its indexing methodology. Later we can use the result of this aligner for RNA-sequence quantification, metagenomic abundance estimation, or population-level read tasks. We expect the memory efficiency of \pufferfish indexing will be beneficial in working with larger collections of genomic and transcriptomic data sets. Moreover, by indexing the genome and transcriptome together using \pufferfish, we can discover novel exon splicing. 
+%Genome comparison and structural variant detection in a group of genomes can also be one of the immediate results of the \pufferfish as construction and query time are both reasonably fast and also memory-efficient.
